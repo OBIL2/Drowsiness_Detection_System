@@ -1,2 +1,2 @@
 # Drowsiness_Detection_System
-A classroom project that uses computer vision to detect when a person is feeling sleepy by analyzing eye movements and facial features. The system gives an alert when drowsiness is detected, showing how AI can be used to improve safety in real-life situations.
+A computer vision-based project that detects student drowsiness in a classroom by analyzing facial features like eye closure and head position. The system identifies when a student appears sleepy and can trigger alerts or logs, demonstrating how AI can be used to improve attention monitoring and engagement in learning environments.
