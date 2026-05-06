@@ -130,7 +130,7 @@ MAR_THRESH = 0.5
 MSE_EYE_THRESH = 0.015
 MSE_YAWN_THRESH = 0.020
 
-CLOSED_FRAMES_THRESHOLD = 15
+CLOSED_FRAMES_THRESHOLD = 90  # 3 seconds at 30fps
 closed_counter = 0
 ALARM_ON = False
 frame_count = 0
