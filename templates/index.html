@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClassLens Dashboard</title>
+    <style>
+        :root {
+            --bg: #0f172a; --panel: #1e293b; --text: #f8fafc;
+            --accent: #8b5cf6; --accent-hover: #7c3aed; --border: #334155;
+        }
+        body { margin: 0; padding: 20px; font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--bg); color: var(--text); }
+        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1400px; margin: 0 auto 20px auto; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
+        .header h1 { margin: 0; font-size: 26px; color: var(--accent); letter-spacing: 1px;}
+        .header-buttons { display: flex; gap: 15px; align-items: center; }
+
+        .btn { padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; border: none; transition: 0.3s; }
+        .btn-start { background-color: #22c55e; color: white; }
+        .btn-start:hover { background-color: #16a34a; }
+        .btn-end { background-color: #ef4444; color: white; display: none; }
+        .btn-end:hover { background-color: #dc2626; }
+        .btn-test { background-color: #475569; color: white; border: 1px solid #64748b; }
+        .btn-logout { color: #ef4444; text-decoration: none; font-weight: bold; border: 1px solid #ef4444; padding: 6px 15px; border-radius: 5px; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 660px 1fr; gap: 25px; max-width: 1400px; margin: 0 auto; }
+        .video-container { background: var(--panel); padding: 10px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative;}
+        .video-container img { border-radius: 8px; display: block; }
+
+        #standby-overlay { position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px; background: rgba(15, 23, 42, 0.8); display: flex; align-items: center; justify-content: center; border-radius: 8px; z-index: 10; font-size: 24px; font-weight: bold; color: #94a3b8; pointer-events: none; border: 2px dashed #475569;}
+
+        .data-panel { display: flex; flex-direction: column; gap: 15px; }
+        .student-card { background: var(--panel); padding: 20px; border-radius: 10px; border-left: 6px solid #475569; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .student-card h3 { margin: 0 0 15px 0; font-size: 18px; display: flex; justify-content: space-between; }
+        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; color: #cbd5e1; }
+        .metric-box { background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px; }
+
+        .status-standby { border-left-color: #64748b; opacity: 0.6;}
+        .status-open { border-left-color: #22c55e; }
+        .status-closing { border-left-color: #f59e0b; }
+        .status-drowsy { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
+        .status-yawn { border-left-color: #06b6d4; }
+        .status-head { border-left-color: #a855f7; opacity: 0.7; }
+        .status-tilt { border-left-color: #94a3b8; opacity: 0.8; }
+
+        .engagement-banner { max-width: 1400px; margin: 0 auto 20px auto; padding: 15px; border-radius: 8px; font-weight: bold; text-align: center; display: none; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(5px);}
+        .modal-content { background: var(--panel); width: 900px; border-radius: 12px; padding: 30px; border: 1px solid var(--border); box-shadow: 0 25px 50px rgba(0,0,0,0.5);}
+        .modal-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 20px;}
+        .modal-header h2 { margin: 0; color: var(--accent); }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px;}
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
+        th { color: #94a3b8; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 15px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ClassLens | <span style="color: #cbd5e1; font-weight: normal; font-size: 20px;">Prof. {{ teacher_name }}</span></h1>
+        <div class="header-buttons">
+            <button class="btn btn-test" onclick="testWhatsApp()">API Test</button>
+            <button id="btn-start" class="btn btn-start" onclick="startSession()">▶ Start Session</button>
+            <button id="btn-end" class="btn btn-end" onclick="endSession()">⏹ End Session</button>
+            <a href="/logout" class="btn-logout">Logout</a>
+        </div>
+    </div>
+
+    <div id="engagement-banner" class="engagement-banner"><span id="engagement-message"></span></div>
+
+    <div class="dashboard-grid">
+        <div class="video-container">
+            <div id="standby-overlay">SESSION IN STANDBY</div>
+            <img src="{{ url_for('video_feed') }}" width="640" height="480">
+        </div>
+        <div class="data-panel" id="student-container">
+            <p style="color: #64748b; font-style: italic;">Awaiting tracking data...</p>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="report-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Post-Session Engagement Report</h2>
+                <span style="color: #94a3b8; font-weight: bold;" id="report-duration">Duration: 0m 0s</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Identity</th>
+                        <th>Final Status</th>
+                        <th>Total Strikes</th>
+                        <th>Time Drowsy (%)</th>
+                        <th>Strike Timestamps</th>
+                    </tr>
+                </thead>
+                <tbody id="report-table-body">
+                </tbody>
+            </table>
+            <div class="modal-actions">
+                <button class="btn btn-test" onclick="closeModal()">Close</button>
+                <button class="btn btn-start" onclick="downloadCSV()">⬇ Download CSV Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentReportData = null;
+
+        async function startSession() {
+            await fetch('/api/session/start', { method: 'POST' });
+            document.getElementById('btn-start').style.display = 'none';
+            document.getElementById('btn-end').style.display = 'block';
+            document.getElementById('standby-overlay').style.display = 'none';
+        }
+
+        async function endSession() {
+            const res = await fetch('/api/session/end', { method: 'POST' });
+            const data = await res.json();
+
+            document.getElementById('btn-start').style.display = 'block';
+            document.getElementById('btn-end').style.display = 'none';
+            document.getElementById('standby-overlay').style.display = 'flex';
+
+            showReport(data.report);
+        }
+
+        function showReport(report) {
+            currentReportData = report;
+            document.getElementById('report-duration').innerText = `Duration: ${report.duration}`;
+
+            const tbody = document.getElementById('report-table-body');
+            tbody.innerHTML = '';
+
+            Object.keys(report.students).forEach(id => {
+                const s = report.students[id];
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight: bold; color: white;">${s.name}</td>
+                    <td><span style="color: ${s.strikes > 2 ? '#ef4444' : '#22c55e'}">${s.status}</span></td>
+                    <td style="font-weight: bold;">${s.strikes}</td>
+                    <td>${s.drowsy_pct}%</td>
+                    <td style="color: #94a3b8; font-size: 0.9em;">${s.strike_times}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('report-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('report-modal').style.display = 'none';
+        }
+
+        function downloadCSV() {
+            if (!currentReportData) return;
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            // CSV Headers as requested
+            csvContent += "Student Name,Final Status,Total Strikes,Time Drowsy (%),Strike Timestamps\n";
+
+            Object.keys(currentReportData.students).forEach(id => {
+                const s = currentReportData.students[id];
+                // Formatting for CSV to handle commas in the timestamps
+                const safeName = s.name.replace(/,/g, "");
+                const safeTimes = `"${s.strike_times}"`;
+
+                csvContent += `${safeName},${s.status},${s.strikes},${s.drowsy_pct},${safeTimes}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `ClassLens_Report_${new Date().getTime()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        async function testWhatsApp() {
+            alert("Sending test payload to Twilio...");
+            try {
+                const res = await fetch('/test_whatsapp');
+                const data = await res.json();
+                if (data.status.includes('Success')) {
+                    alert("✅ Success! Check your phone.");
+                } else {
+                    alert("❌ Failed! Twilio Error: \n" + data.error);
+                }
+            } catch (e) { alert("Error calling backend."); }
+        }
+
+        function getStatusClass(status) {
+            if (status === 'STANDBY') return 'status-standby';
+            if (status === 'OPEN EYES') return 'status-open';
+            if (status === 'EYES CLOSING') return 'status-closing';
+            if (status === 'DROWSINESS DETECTED') return 'status-drowsy';
+            if (status === 'YAWNING') return 'status-yawn';
+            if (status === 'HEAD DOWN') return 'status-head';
+            if (status === 'HEAD TILTED') return 'status-tilt';
+            return 'status-standby';
+        }
+
+        async function fetchDashboardData() {
+            try {
+                const res = await fetch('/dashboard_data');
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                const data = await res.json();
+
+                if(data.session_active) {
+                    document.getElementById('btn-start').style.display = 'none';
+                    document.getElementById('btn-end').style.display = 'block';
+                    document.getElementById('standby-overlay').style.display = 'none';
+                }
+
+                const banner = document.getElementById('engagement-banner');
+                if (data.engagement.show) {
+                    banner.style.display = 'block';
+                    banner.innerText = data.engagement.message;
+                    banner.style.background = data.engagement.level >= 3 ? '#3b0764' : '#422006'; // Purple for strikes
+                    banner.style.color = data.engagement.level >= 3 ? '#d8b4fe' : '#fdba74';
+                    banner.style.border = `1px solid ${data.engagement.level >= 3 ? '#a855f7' : '#f97316'}`;
+                } else {
+                    banner.style.display = 'none';
+                }
+
+                const container = document.getElementById('student-container');
+                container.innerHTML = '';
+
+                const keys = Object.keys(data.students);
+                if (keys.length === 0) {
+                    container.innerHTML = '<p style="color: #64748b; font-style: italic;">No subjects detected in frame.</p>';
+                    return;
+                }
+
+                keys.forEach(id => {
+                    const s = data.students[id];
+                    const card = document.createElement('div');
+                    card.className = `student-card ${getStatusClass(s.status)}`;
+                    card.innerHTML = `
+                        <h3><span style="color: #c4b5fd;">${s.name}</span> <span>${s.status}</span></h3>
+                        <div class="metrics-grid">
+                            <div class="metric-box"><strong>Strikes:</strong> ${s.strikes}</div>
+                            <div class="metric-box"><strong>Drowsy:</strong> ${s.drowsy_pct}%</div>
+                            <div class="metric-box" style="grid-column: span 2;"><strong>Logs:</strong> <span style="color:#94a3b8">${s.strike_times}</span></div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (e) {}
+        }
+        setInterval(fetchDashboardData, 500);
+    </script>
+</body>
+</html>
