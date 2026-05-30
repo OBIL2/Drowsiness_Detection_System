@@ -2,31 +2,130 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instructor Login - ClassLens</title>
+    <title>ClassLens - Faculty Login</title>
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); height: 100vh; display: flex; align-items: center; justify-content: center; color: white; }
-        .login-box { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); padding: 40px; border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.3); box-shadow: 0 15px 35px rgba(0,0,0,0.5); width: 100%; max-width: 380px; text-align: center; }
-        .login-box h2 { margin-top: 0; font-weight: 600; letter-spacing: 1px; color: #a855f7; font-size: 28px;}
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(0, 0, 0, 0.2); color: white; border-radius: 6px; box-sizing: border-box; outline: none; transition: 0.3s; }
-        input:focus { border-color: #a855f7; }
-        button { width: 100%; padding: 12px; background: #8b5cf6; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 20px; transition: 0.3s; }
-        button:hover { background: #7c3aed; }
-        .error { color: #ef4444; font-size: 14px; margin-top: 15px; font-weight: bold; }
+        /* Dark purplish background */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1f0b2e, #3b205e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+        }
+        h2 {
+            color: #2c1a3b;
+            margin-bottom: 20px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #512da8; /* Purple to match the theme */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #673ab7;
+        }
+        .error-msg {
+            color: #e74c3c;
+            background-color: #fadbd8;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
     </style>
 </head>
 <body>
     <div class="login-box">
-        <h2>ClassLens</h2>
-        <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">Instructor Portal Authentication</p>
-        <form method="POST">
-            <input type="text" name="username" placeholder="Instructor ID" required>
-            <input type="password" name="password" placeholder="Passcode" required>
-            <button type="submit">Initialize Dashboard</button>
-            {% if error %}
-            <div class="error">{{ error }}</div>
-            {% endif %}
+        <h2>ClassLens System</h2>
+
+        {% if lockout_timestamp %}
+            <div class="error-msg" id="timer-msg">
+                System locked. Please wait <span id="countdown"></span>s.
+            </div>
+        {% elif error %}
+            <div class="error-msg">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="/login">
+            <input type="text" name="username" id="user-input" placeholder="Faculty Username" required>
+            <input type="password" name="password" id="pass-input" placeholder="Password" required>
+            <button type="submit" id="submit-btn">Authenticate</button>
         </form>
     </div>
+
+    {% if lockout_timestamp %}
+    <script>
+        const unlockTime = {{ lockout_timestamp }};
+        const countdownSpan = document.getElementById('countdown');
+        const timerMsg = document.getElementById('timer-msg');
+        const submitBtn = document.getElementById('submit-btn');
+        const userInput = document.getElementById('user-input');
+        const passInput = document.getElementById('pass-input');
+
+        // 1. Instantly disable the form elements
+        submitBtn.disabled = true;
+        submitBtn.style.backgroundColor = "#95a5a6"; // Gray out the button
+        submitBtn.style.cursor = "not-allowed";
+        userInput.disabled = true;
+        passInput.disabled = true;
+
+        // 2. The ticking clock function
+        function updateTimer() {
+            const now = Date.now() / 1000;
+            // FIXED: Added Math.ceil to round the decimal up to a clean whole number
+            const remaining = Math.ceil(unlockTime - now);
+
+            if (remaining > 0) {
+                countdownSpan.textContent = remaining;
+            } else {
+                // 3. Time is up! Re-enable the form and turn the box green
+                clearInterval(timerInterval);
+                timerMsg.innerHTML = "Lockout ended. You may try again.";
+                timerMsg.style.backgroundColor = "#d5f5e3";
+                timerMsg.style.color = "#27ae60";
+
+                submitBtn.disabled = false;
+                submitBtn.style.backgroundColor = "#512da8";
+                submitBtn.style.cursor = "pointer";
+                userInput.disabled = false;
+                passInput.disabled = false;
+                userInput.value = "";
+                passInput.value = "";
+            }
+        }
+
+        // Run immediately, then tick every 1000ms (1 second)
+        updateTimer();
+        const timerInterval = setInterval(updateTimer, 1000);
+    </script>
+    {% endif %}
 </body>
 </html>
